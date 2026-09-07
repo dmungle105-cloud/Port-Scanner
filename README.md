@@ -1,39 +1,43 @@
-# Simple Python Port Scanner
+# Multi-Threaded Python Port Scanner
 
-A lightweight, synchronous network utility written in Python to scan a target host for open ports. This script serves as the starting baseline for exploring networking concepts before implementing multi-threaded optimizations.
+A high-performance, multi-threaded network scanner built in Python. This utility utilizes safe multi-threading mechanisms to scan a target host for open TCP ports rapidly without overwhelming system resources.
 
 ##  Features
-* Automatically resolves local test targets (`127.0.0.1`).
-* Supports custom target inputs via command-line arguments.
-* Iterates sequentially through standard system ports to verify active TCP connections.
-* Built-in timeout handling to quickly bypass unresponsive connections.
+* **Multi-Threaded Execution:** Utilizes Python's `threading` module to scan multiple ports simultaneously.
+* **System Safeguards:** Employs a `BoundedSemaphore` to cap simultaneous active connections to 100, preventing resource exhaustion or crash loops.
+* **Dynamic Targets:** Accepts target hostnames or IP addresses dynamically via command-line arguments.
+* **Graceful Lifecycle:** Uses thread joining (`t.join()`) to ensure the main program waits for all worker threads to complete before exiting.
 
 ##  Requirements
 * Python 3.x
-* Standard built-in modules (`socket`, `sys`) — no external dependencies required.
+* Standard built-in modules (`socket`, `sys`, `threading`) — no external installations required.
 
 ##  How to Use
 
-1. **Clone the repository or download the script:**
+1. **Clone the repository:**
    ```bash
    git clone <paste-your-github-repo-url-here>
-   cd <your-repo-folder-name>
+   cd "Port Scanner"
    ```
 
-2. **Run a default local scan (targets 127.0.0.1):**
+2. **Run a scan against a specific target IP or Hostname:**
+   You must provide the target host as a command-line argument:
    ```bash
-   python Untitled-1.py
+   python "port scanner.py" 127.0.0.1
    ```
+   *(Note: Use quotation marks around the filename if your path contains spaces).*
 
-3. **Run a scan against a specific IP or Hostname:**
-   ```bash
-   python Untitled-1.py 192.168.1.1
-   ```
+##  Sample Output
+```text
+[*] Launching threads for ports 1-1024 on 127.0.0.1...
+[+] Port 135 is OPEN
+[+] Port 445 is OPEN
+[*] Scan complete!
+```
 
-##  Future Roadmap
-* [ ] Implement **Multithreading** to significantly accelerate scanning speeds.
-* [ ] Add custom port range inputs via command-line arguments.
-* [ ] Export scan results to a log file (`.txt` or `.json`).
-
----
-*Developed as a foundational networking experiment.*
+##  Project Evolution & Roadmap
+* [x] Basic sequential port testing baseline.
+* [x] Core multithreading migration.
+* [x] Bounded thread limiting for local stability.
+* [ ] Add dynamic port range selections via command-line flags (e.g., `-p 20-80`).
+* [ ] Implement basic service banner grabbing to identify running software.
