@@ -1,37 +1,66 @@
 #!/usr/bin/env python3
 import socket
 import sys
-from concurrent.futures import ThreadPoolExecutor
+import threading
+from datetime import datetime
 
-# TARGET SETUP
-target = "127.0.0.1" # Default local test
-if len(sys.argv) > 1:
-    target = sys.argv[1]
+# FINAL VERSION: Added service banner grabbing to identify running applications.
+# Updated with a safe Thread Limiter and Joins to prevent system crash loops.
 
-print(f"[*] Starting fast multithreaded scan on target: {target}")
-print("[*] Scanning all ports (1-65535)... Please wait.\n")
+# Limit simultaneous active connections to 100 so your system doesn't crash
+thread_limiter = threading.BoundedSemaphore(100)
 
-def scan_port(port):
-    """Attempts to connect to a single port. Prints if open."""
+def scan_port(target_ip, port):
+    thread_limiter.acquire()
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.settimeout(1.0) # 1 second timeout per port
+        s.settimeout(1.0)
+        result = s.connect_ex((target_ip, port))
         
-        # connect_ex returns 0 if the connection was successful
-        result = s.connect_ex((target, port))
         if result == 0:
-            print(f"[+] Found open port: {port}")
+            # Try to grab the banner safely
+            try:
+                # Optional: Send a generic request to trick certain servers into replying
+                s.send(b"HEAD / HTTP/1.0\r\n\r\n") 
+                banner = s.recv(512).decode().strip()
+                if banner:
+                    print(f"[+] Port {port}: OPEN --> {banner}")
+                else:
+                    print(f"[+] Port {port}: OPEN (No banner responded)")
+            except:
+                print(f"[+] Port {port}: OPEN (Standard response connection)")
         s.close()
     except Exception:
-        pass # Ignore errors (like system interrupts) and keep going
+        pass
+    finally:
+        thread_limiter.release()
 
 def main():
-    # ThreadPoolExecutor manages running multiple threads at once.
-    # max_workers=200 means 200 ports are being checked at the exact same millisecond!
-    with ThreadPoolExecutor(max_workers=200) as executor:
-        # map automatically passes every port from 1 to 65535 into our scan_port function
-        executor.map(scan_port, range(1, 65536))
+    if len(sys.argv) < 2:
+        print("Usage: python3 scanner.py <Target IP>")
+        sys.exit(1)
+        
+    target = sys.argv[1]
     
+    try:
+        target_ip = socket.gethostbyname(target)
+    except socket.gaierror:
+        print("[-] Verification failed: Could not resolve target hostname.")
+        sys.exit(1)
+        
+    print(f"[*] Scan initiated on {target_ip} at {str(datetime.now())}")
+    print("[*] Checking ports 1-1024... Please wait.\n")
+    
+    threads = []
+    for port in range(1, 1025):
+        t = threading.Thread(target=scan_port, args=(target_ip, port))
+        threads.append(t)
+        t.start()
+
+    # Wait for all 1,024 threads to finish scanning before ending the script
+    for t in threads:
+        t.join()
+
     print("\n[*] Scan complete!")
 
 if __name__ == "__main__":
